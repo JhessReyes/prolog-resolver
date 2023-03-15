@@ -35,12 +35,12 @@ function App() {
   }
 
   return (
-    <div className="flex flex-col w-screen h-screen">
-      <div className="py-10 items-center justify-center text-center">
+    <div className="flex flex-col w-screen h-screen bg-[#3D4451] dark:bg-[#191D24]">
+      <div className="py-10 items-center justify-center text-center text-warning">
         <h1>Prolog Resolver</h1>
       </div>
       <div className="flex grow">
-        <div className="mockup-code grow mx-10 mb-10 shadow-2xl shadow-orange-200">
+        <div className="mockup-code grow mx-10 mb-10 shadow-xl shadow-orange-200">
           <div className="flex flex-col p-5 h-full">
             <div className="grid sm:grid-flow-col grid-flow-row">
               <div className="text-warning">

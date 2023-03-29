@@ -1,88 +1,154 @@
 import { useState } from "react";
 import "./App.css";
+import { TextArea } from "./components/atoms";
 
 function App() {
-  const [textRules, setTextRules] = useState("");
-  const [textQuery, setTextQuery] = useState("");
+  const [textRules, setTextRules] = useState(`padre(juan,jose).\npapa(pedro,maria).\npapa(juan,jose).\npapito(juan,maria).\nmujer(maria). `);
+  const [textQuery, setTextQuery] = useState(`Quien es papa de maria y jose?\n\n¿Me podría decir quien es el papito de la señorita Maria?\n\n¿sera cierto que juan es el papito perdido de el niño travieso de maria?\n\nmaria es mujer?`);
+  const [prologQuery, setPrologQuery] = useState("");
   const [textOuput, setTextOuput] = useState("");
+  const variables = { varX: ['quien', 'quién'] }
 
-  function queryRG(code_pl, query) {
+  function queryProlog(code_pl, query) {
     let output = "";
     var session = pl.create(1000);
     var code_pl = code_pl;
-    var parsed = session.consult(code_pl);
-    var query = session.query(query);
+    var parsed = session.consult(code_pl, {
+      success: function () {
+        var callback = function (answer) {
+          let res = false
+          res = pl.format_answer(answer)
+          inform(res);
+        }
+        session.query(query, {
+          success: function () {
+            session.answer(callback)
+          }
+        })
+      }
+    });
 
     function inform(msg) {
       setTextOuput((output += msg + "\n"));
     }
+  }
 
-    var count_answers = 0;
-    var callback = function (answer) {
-      if (answer === false) {
-        inform("REALIZADO, #respuestas = " + count_answers);
-        return;
+  function transformQuery(questions, relations, objects, variables) {
+    let querys = [];
+    for (let i = 0; i < questions.length; i++) {
+      let question = questions[i]
+      let objQuestion = []
+      let relQuestion = []
+
+      for (let j = 0; j < questions[i].length; j++) {
+        const element = questions[i][j];
+        if (objects.includes(element)) objQuestion.push(element)
+        if (relations.includes(element)) relQuestion.push(element)
+        if (variables.varX.includes(element)) {
+          question.some(item => {
+            if (variables.varX.includes(item)) {
+              question.some(relation => {
+                if (relations.includes(relation)) {
+                  question.some(object => {
+                    if (objects.includes(object)) {
+                      let query = relation + '(' + relation.toUpperCase() + '_' + object.toUpperCase() + ',' + object + '). \n'
+                      querys.push(query)
+                    }
+                  })
+                };
+              })
+            }
+          })
+          break
+        }
       }
-      if (answer === null) {
-        inform("TIMEOUT, #respuestas = " + count_answers);
-        return;
+      if (objQuestion.length === 2) {
+        relQuestion.forEach((item) => {
+          let query = item + '(' + objQuestion[0] + ',' + objQuestion[1] + '). \n'
+          querys.push(query)
+        })
+      } else if (objQuestion.length === 1) {
+        relQuestion.forEach((item) => {
+          let query = item + '(' + objQuestion[0] + '). \n'
+          querys.push(query)
+        })
       }
-      ++count_answers;
-      inform(pl.format_answer(answer));
-      session.answer(callback);
-    };
-    session.answer(callback);
+    }
+
+    alert(querys)
+
+    let query = ''
+    for (let i = 0; i < querys.length; i++) {
+      query += querys[i];
+    }
+    setPrologQuery(query)
+    queryProlog(textRules, query)
+  }
+
+  function execute(textQuery, textRules) {
+    const regexQuestion = /\W*[?]/
+    const regexRule = /\W*[.]/
+    const regexSentence = /\W/
+    let questions = textQuery.toLowerCase().split(regexQuestion);
+    let rules = textRules.split(regexRule)
+
+    let objects = [];
+    let relations = [];
+
+    let wordsQuestion = []
+    let wordsRules = []
+    questions.forEach(question => {
+      let q = question.split(regexSentence).filter(function (x) { return x !== ''; })
+      wordsQuestion.push(q)
+    });
+
+    rules.forEach(rule => {
+      let r = rule.split(regexSentence).filter(function (x) { return x !== '' })
+      let rObj = r.filter(function (x, i) { return i !== 0 })
+      relations.push(r[0])
+      rObj.forEach(obj => {
+        if (!objects.includes(obj))
+          objects.push(obj)
+      })
+      wordsRules.push(r)
+    })
+
+    transformQuery(wordsQuestion, relations, objects, variables)
   }
 
   return (
-    <div className="flex flex-col w-screen h-screen bg-[#3D4451] dark:bg-[#191D24]">
+    <div className="flex flex-col w-screen sm:h-screen h-full bg-[#191D24] dark:bg-[#191D24]"> {/* bg-[#3D4451] */}
       <div className="py-10 items-center justify-center text-center text-warning">
         <h1>Prolog Resolver</h1>
       </div>
-      <div className="flex grow">
-        <div className="mockup-code grow mx-10 mb-10 shadow-xl shadow-orange-200">
-          <div className="flex flex-col p-5 h-full">
+      <div className="flex">
+        <div className="mockup-code grow mx-10 mb-10 shadow-xl shadow-orange-200 bg-[#191d24]">
+          <div className="flex flex-col p-5 h-auto">
             <div className="grid sm:grid-flow-col grid-flow-row">
-              <div className="text-warning">
-                <pre
-                  data-prefix=">"
-                  className="border-l-2 border-warning text-warning flex">
-                  <h2 className="text-warning font-bold">Reglas</h2>
-                </pre>
-                <textarea
-                  spellcheck="false"
-                  className="flex text-area pl-5 mt-4 h-72 w-full bg-transparent border-l-2 border-warning"
-                  onChange={(e) => setTextRules(e?.target?.value)}></textarea>
-              </div>
-              <div className="text-info">
-                <pre data-prefix=">" className="border-l-2 border-info flex">
-                  <h2 className="font-bold">Consulta</h2>
-                </pre>
-                <textarea
-                  spellcheck="false"
-                  className="flex text-area pl-5 mt-4 h-72 w-full bg-transparent border-l-2 border-info"
-                  onChange={(e) => setTextQuery(e?.target?.value)}></textarea>
-              </div>
+              <TextArea value={textRules} title='Reglas' text='warning' onChange={(value) => setTextRules(value + ' ')} />
+              <TextArea value={textQuery} title='Consulta' text='info' onChange={(value) => setTextQuery(value)} />
             </div>
-            <div className="flex justify-between py-5 text-success text-center items-center ">
-              <pre data-prefix=">" className="border-l-2 border-success flex">
-                <h2 className="text-success font-bold">Output</h2>
-              </pre>
-              <button
-                className="btn btn-sm btn-success"
-                onClick={(e) => queryRG(textRules, textQuery)}>
-                Ejecutar
-              </button>
+            <div className="pt-5">
+              <TextArea
+                title='Output'
+                text='success'
+                action={
+                  <button
+                    className="btn btn-sm btn-success"
+                    onClick={(e) => execute(textQuery, textRules)}>
+                    Ejecutar
+                  </button>
+                }
+                value={textOuput}
+                classTextArea='!h-44'
+                disabled
+              >
+              </TextArea>
             </div>
-            <textarea
-              disabled
-              spellcheck="false"
-              className="flex text-area grow pl-5 mt-4 w-full h-44 bg-transparent text-success"
-              value={textOuput}></textarea>
           </div>
         </div>
       </div>
-    </div>
+    </div >
   );
 }
 
